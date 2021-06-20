@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BLENDER_DIR=.
+BLENDER_DIR=./nerf_synthetic/lego
 
 python train.py \
    --dataset_name blender \

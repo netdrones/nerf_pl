@@ -6,8 +6,12 @@ help:
 install:
 	conda env update -f environment.yml
 
-download-lego: 
+download-lego:
 	if [ ! -d "./nerf_synthetic" ]; then gsutil -m cp -r gs://lucas.netdron.es/nerf_synthetic .; fi
 
 train-lego: download-lego
 	sh +x scripts/train_blender.sh
+
+clean:
+	rm -rf nerf_synthetic
+	rm -rf logs
