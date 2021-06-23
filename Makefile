@@ -6,6 +6,15 @@ help:
 install:
 	conda env update -f environment.yml
 
+train-brandenburg: download-brandenburg
+	if [ ! -d "./brandenburg_gate/cache" ]; then \
+		python prepare_phototourism.py --root_dir ./brandenburg_gate --img_downscale 2; \
+	fi
+	sh +x scripts/train_brandenburg.sh
+
+download-brandenburg:
+	if [ ! -d "./brandenburg_gate" ]; then gsutil -m cp -r gs://lucas.netdron.es/brandenburg_gate .; fi
+
 download-lego:
 	if [ ! -d "./nerf_synthetic" ]; then gsutil -m cp -r gs://lucas.netdron.es/nerf_synthetic .; fi
 
@@ -13,5 +22,6 @@ train-lego: download-lego
 	sh +x scripts/train_blender.sh
 
 clean:
+	rm -rf brandenburg_gate
 	rm -rf nerf_synthetic
 	rm -rf logs
