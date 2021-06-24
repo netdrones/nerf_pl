@@ -6,6 +6,19 @@ help:
 install:
 	conda env update -f environment.yml
 
+eval-brandenburg: download-ckpts
+	python eval.py \
+	  --root_dir brandenburg_gate/ \
+	  --dataset_name phototourism --scene_name brandenburg_test \
+	  --split test --N_samples 256 --N_importance 256 \
+	  --N_vocab 1500 --encode_a --encode_t \
+	  --ckpt_path ckpts/brandenburg_scale8_nerfw/epoch=6.ckpt \
+	  --chunk 16384
+
+download-ckpts:
+	if [ ! -d ckpts/ ]; then gsutil -m cp -r gs://lucas.netdrones/nerfw_ckpts/ .; fi
+	mv nerfw_ckpts ckpts
+
 train-brandenburg: download-brandenburg
 	if [ ! -d "./brandenburg_gate/cache" ]; then \
 		python prepare_phototourism.py --root_dir ./brandenburg_gate --img_downscale 2; \
