@@ -4,4 +4,5 @@ from .phototourism import PhototourismDataset
 
 dataset_dict = {'blender': BlenderDataset,
                 'llff': LLFFDataset,
-                'phototourism': PhototourismDataset}
+                'phototourism': PhototourismDataset,
+                'playground': PhototourismDataset}

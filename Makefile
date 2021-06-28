@@ -6,6 +6,19 @@ help:
 install:
 	conda env update -f environment.yml
 
+train-playground:
+	python generate_splits.py playground/dense/images playground/playground.tsv playground playground/database.db
+	if [ ! -d "./playground/cache" ]; then \
+	  python prepare_phototourism.py --root_dir ./playground --img_downscale 2; \
+	fi
+	sh +x scripts/train_playground.sh
+
+colmap-playground: download-playground
+	sh +x bin/run_colmap.sh ./playground
+
+download-playground:
+	if [ ! -d "./playground" ]; then gsutil -m cp -r gs://lucas.netdron.es/data/playground .; fi
+
 eval-brandenburg: download-ckpts
 	python eval.py \
 	  --root_dir brandenburg_gate/ \
@@ -20,6 +33,8 @@ download-ckpts:
 	mv nerfw_ckpts ckpts
 
 train-brandenburg: download-brandenburg
+	wget https://nerf-w.github.io/data/selected_images/brandenburg.tsv
+	mv brandenburg.tsv brandenburg_gate/
 	if [ ! -d "./brandenburg_gate/cache" ]; then \
 		python prepare_phototourism.py --root_dir ./brandenburg_gate --img_downscale 2; \
 	fi

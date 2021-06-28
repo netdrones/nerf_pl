@@ -100,6 +100,10 @@ class NeRFSystem(LightningModule):
             kwargs['img_downscale'] = self.hparams.img_downscale
             kwargs['val_num'] = self.hparams.num_gpus
             kwargs['use_cache'] = self.hparams.use_cache
+        elif self.hparams.dataset_name == 'playground':
+            kwards['img_downscale'] = self.hparams.img_downscale
+            kwargs['val_num'] = self.hparams.num_gpus
+            kwargs['use_cache'] = self.hparams.use_cache
         elif self.hparams.dataset_name == 'blender':
             kwargs['img_wh'] = tuple(self.hparams.img_wh)
             kwargs['perturbation'] = self.hparams.data_perturb
@@ -124,7 +128,7 @@ class NeRFSystem(LightningModule):
                           num_workers=4,
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
-    
+
     def training_step(self, batch, batch_nb):
         rays, rgbs, ts = batch['rays'], batch['rgbs'], batch['ts']
         results = self(rays, ts)
@@ -153,7 +157,7 @@ class NeRFSystem(LightningModule):
         loss = sum(l for l in loss_d.values())
         log = {'val_loss': loss}
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
-    
+
         if batch_nb == 0:
             if self.hparams.dataset_name == 'phototourism':
                 WH = batch['img_wh']
