@@ -6,6 +6,19 @@ help:
 install:
 	conda env update -f environment.yml
 
+train-truck: colmap-truck
+	python generate_splits.py truck/dense/images truck/truck.tsv truck truck/database.db
+	if [ ! -d "./truck/cache" ]; then \
+	  python prepare_phototourism.py --root_dir ./truck --img_downscale 2; \
+	fi
+	sh +x scripts/train_truck.sh
+
+colmap-truck: download-truck
+	sh +x bin/run_colmap.sh ./truck
+
+download-truck:
+	if [ ! -d "./truck" ]; then gsutil -m cp -r gs://lucas.netdron.es/truck .; fi
+
 train-playground:
 	python generate_splits.py playground/dense/images playground/playground.tsv playground playground/database.db
 	if [ ! -d "./playground/cache" ]; then \

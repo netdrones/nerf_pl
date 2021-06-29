@@ -2,14 +2,12 @@
 
 WORKSPACE_PATH=$1
 
-"""
 colmap feature_extractor --database_path $WORKSPACE_PATH/database.db \
   --image_path $WORKSPACE_PATH/images \
 
 colmap exhaustive_matcher --database_path $WORKSPACE_PATH/database.db \
 
 mkdir -p $WORKSPACE_PATH/sparse
-"""
 
 colmap mapper \
   --database_path $WORKSPACE_PATH/database.db \
