@@ -6,6 +6,17 @@ help:
 install:
 	conda env update -f environment.yml
 
+eval-truck:
+	python generate_splits.py truck/dense/images truck/brandenburg.tsv truck truck/database.db
+	mv truck brandenburg_gate
+	python eval.py \
+	  --root_dir brandenburg_gate \
+	  --dataset_name phototourism --scene_name truck_eval \
+	  --split test --N_samples 256 --N_importance 256 \
+	  --N_vocab 1500 --encode_a --encode_t \
+	  --ckpt_path nerf_6_29/nerfw_truck/epoch=10.ckpt \
+	  --chunk 16384
+
 train-truck: colmap-truck
 	python generate_splits.py truck/dense/images truck/truck.tsv truck truck/database.db
 	if [ ! -d "./truck/cache" ]; then \
@@ -18,6 +29,16 @@ colmap-truck: download-truck
 
 download-truck:
 	if [ ! -d "./truck" ]; then gsutil -m cp -r gs://lucas.netdron.es/truck .; fi
+
+eval-playground:
+	mv playground brandenburg_gate
+	python eval.py \
+	  --root_dir brandenburg_gate \
+	  --dataset_name phototourism --scene_name playground_eval \
+	  --split test --N_samples 256 --N_importance 256 \
+	  --N_vocab 1500 --encode_a --encode_t \
+	  --ckpt_path nerf_6_29/nerfw_playground/epoch=10.ckpt \
+	  --chunk 16384
 
 train-playground:
 	python generate_splits.py playground/dense/images playground/playground.tsv playground playground/database.db
