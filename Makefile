@@ -3,8 +3,21 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, %%2}'
 
+
 install:
 	conda env update -f environment.yml
+
+train-picnic:
+	gsutil -m cp -r gs://lucas.netdron.es/picnic-COLMAP .
+	mv picnic-COLMAP picnic
+	python generate_splits.py picnic/dense/images picnic/picnic.tsv picnic picnic/database.db
+	if [ ! -d "./picnic/cache" ]; then \
+	  python prepare_phototourism.py --root_dir ./picnic --img_downscale 2; \
+	fi
+	sh +x scripts/train_picnic.sh
+
+colmap-picnic:
+	sh +x bin/run_colmap.sh ./picnic
 
 eval-truck:
 	python generate_splits.py truck/dense/images truck/brandenburg.tsv truck truck/database.db

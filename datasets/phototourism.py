@@ -75,7 +75,7 @@ class PhototourismDataset(Dataset):
             camdata = read_cameras_binary(os.path.join(self.root_dir, 'dense/sparse/cameras.bin'))
             for id_ in self.img_ids:
                 K = np.zeros((3, 3), dtype=np.float32)
-                cam = camdata[id_]
+                cam = camdata[imdata[id_][3]]
                 img_w, img_h = int(cam.params[2]*2), int(cam.params[3]*2)
                 img_w_, img_h_ = img_w//self.img_downscale, img_h//self.img_downscale
                 K[0, 0] = cam.params[0]*img_w_/img_w # fx
@@ -129,9 +129,9 @@ class PhototourismDataset(Dataset):
                 self.fars[k] /= scale_factor
             self.xyz_world /= scale_factor
         self.poses_dict = {id_: self.poses[i] for i, id_ in enumerate(self.img_ids)}
-            
+
         # Step 5. split the img_ids (the number of images is verfied to match that in the paper)
-        self.img_ids_train = [id_ for i, id_ in enumerate(self.img_ids) 
+        self.img_ids_train = [id_ for i, id_ in enumerate(self.img_ids)
                                     if self.files.loc[i, 'split']=='train']
         self.img_ids_test = [id_ for i, id_ in enumerate(self.img_ids)
                                     if self.files.loc[i, 'split']=='test']
@@ -162,7 +162,7 @@ class PhototourismDataset(Dataset):
                     img = self.transform(img) # (3, h, w)
                     img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
                     self.all_rgbs += [img]
-                    
+
                     directions = get_ray_directions(img_h, img_w, self.Ks[id_])
                     rays_o, rays_d = get_rays(directions, c2w)
                     rays_t = id_ * torch.ones(len(rays_o), 1)
@@ -172,10 +172,10 @@ class PhototourismDataset(Dataset):
                                                 self.fars[id_]*torch.ones_like(rays_o[:, :1]),
                                                 rays_t],
                                                 1)] # (h*w, 8)
-                                    
+
                 self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
                 self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
-        
+
         elif self.split in ['val', 'test_train']: # use the first image as val image (also in train)
             self.val_id = self.img_ids_train[0]
 
