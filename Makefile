@@ -7,6 +7,19 @@ help:
 install:
 	conda env update -f environment.yml
 
+eval-house:
+	python eval.py \
+	  --root_dir brandenburg_gate \
+	  --dataset_name phototourism --scene_name house_eval \
+	  --split test --N_samples 2356 --N_importance 256 \
+	  --N_vocab 1500 --encode_a --encode_t \
+	  --ckpt_path house_scale2_nerfw/epoch=19.ckpt \
+	  --chunk 16384
+
+download-eval-house:
+	gsutil -m cp -r gs://lucas.netdron.es/house gs://lucas.netdron.es/house_scale2_nerfw .
+	mv house brandenburg_gate
+
 train-picnic:
 	gsutil -m cp -r gs://lucas.netdron.es/picnic-COLMAP .
 	mv picnic-COLMAP picnic

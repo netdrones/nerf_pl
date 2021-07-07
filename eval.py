@@ -15,6 +15,7 @@ import metrics
 from datasets import dataset_dict
 from datasets.depth_utils import *
 
+REF_PIC = 39
 torch.backends.cudnn.benchmark = True
 
 def get_opts():
@@ -51,7 +52,7 @@ def get_opts():
 
     # NeRF-W parameters
     parser.add_argument('--N_vocab', type=int, default=100,
-                        help='''number of vocabulary (number of images) 
+                        help='''number of vocabulary (number of images)
                                 in the dataset for nn.Embedding''')
     parser.add_argument('--encode_a', default=False, action="store_true",
                         help='whether to encode appearance (NeRF-A)')
@@ -168,13 +169,13 @@ if __name__ == "__main__":
                                    [0,                  0,                    1]])
         if scene == 'brandenburg_gate':
             # select appearance embedding, hard-coded for each scene
-            dataset.test_appearance_idx = 1123 # 85572957_6053497857.jpg
+            dataset.test_appearance_idx = REF_PIC
             N_frames = 30*4
             dx = np.linspace(0, 0.03, N_frames)
-            dy = np.linspace(0, -0.1, N_frames)
-            dz = np.linspace(0, 0.5, N_frames)
+            dy = np.linspace(0, -0.5, N_frames)
+            dz = np.linspace(0, 0.0, N_frames)
             # define poses
-            dataset.poses_test = np.tile(dataset.poses_dict[1123], (N_frames, 1, 1))
+            dataset.poses_test = np.tile(dataset.poses_dict[REF_PIC], (N_frames, 1, 1))
             for i in range(N_frames):
                 dataset.poses_test[i, 0, 3] += dx[i]
                 dataset.poses_test[i, 1, 3] += dy[i]
@@ -197,9 +198,9 @@ if __name__ == "__main__":
             w, h = args.img_wh
         else:
             w, h = sample['img_wh']
-        
+
         img_pred = np.clip(results['rgb_fine'].view(h, w, 3).cpu().numpy(), 0, 1)
-        
+
         img_pred_ = (img_pred*255).astype(np.uint8)
         imgs += [img_pred_]
         imageio.imwrite(os.path.join(dir_name, f'{i:03d}.png'), img_pred_)
@@ -208,12 +209,12 @@ if __name__ == "__main__":
             rgbs = sample['rgbs']
             img_gt = rgbs.view(h, w, 3)
             psnrs += [metrics.psnr(img_gt, img_pred).item()]
-        
+
     if args.dataset_name == 'blender' or \
       (args.dataset_name == 'phototourism' and args.split == 'test'):
         imageio.mimsave(os.path.join(dir_name, f'{args.scene_name}.{args.video_format}'),
                         imgs, fps=30)
-    
+
     if psnrs:
         mean_psnr = np.mean(psnrs)
         print(f'Mean PSNR : {mean_psnr:.2f}')
