@@ -7,7 +7,8 @@ help:
 install:
 	conda env update -f environment.yml
 
-eval-house:
+eval-house: download-house-ckpts
+	mv house brandenburg_gate
 	python eval.py \
 	  --root_dir brandenburg_gate \
 	  --dataset_name phototourism --scene_name house_eval \
@@ -15,25 +16,44 @@ eval-house:
 	  --N_vocab 1500 --encode_a --encode_t \
 	  --ckpt_path house_scale2_nerfw/epoch=19.ckpt \
 	  --chunk 16384
+	mv brandenburg_gate house
 
-download-eval-house:
-	gsutil -m cp -r gs://lucas.netdron.es/house gs://lucas.netdron.es/house_scale2_nerfw .
-	mv house brandenburg_gate
+train-house: colmap-house
+	sh +x bin/train.sh ./house house_scale2_nerfw 2
 
-train-picnic:
-	gsutil -m cp -r gs://lucas.netdron.es/picnic-COLMAP .
-	mv picnic-COLMAP picnic
-	python generate_splits.py picnic/dense/images picnic/picnic.tsv picnic picnic/database.db
-	if [ ! -d "./picnic/cache" ]; then \
-	  python prepare_phototourism.py --root_dir ./picnic --img_downscale 2; \
+colmap-house: download-house
+	if [ ! -d ".house/dense" ]; then sh _x bin/run_colmap.sh ./house
+
+download-house:
+	if [ ! -d "./house" ]; then gsutil -m cp -r gs://lucas.netdron.es/house .; fi
+
+download-house-ckpts:
+	if [ ! -d "./house_scale2_nerfw" ]; then \
+		gsutil -m cp -r gs://lucas.netdron.es/house_scale2_nerfw .;
 	fi
-	sh +x scripts/train_picnic.sh
 
-colmap-picnic:
-	sh +x bin/run_colmap.sh ./picnic
+eval-playground: download-test-ckpts
+	mv playground brandenburg_gate
+	python eval.py \
+	  --root_dir brandenburg_gate \
+	  --dataset_name phototourism --scene_name house_eval \
+	  --split test --N_samples 2356 --N_importance 256 \
+	  --N_vocab 1500 --encode_a --encode_t \
+	  --ckpt_path nerf_6_29/nerfw_playground/epoch=10.ckpt \
+	  --chunk 16384
+	mv playground house
 
-eval-truck:
-	python generate_splits.py truck/dense/images truck/brandenburg.tsv truck truck/database.db
+train-playground: colmap-playground
+	sh +x bin/train.sh ./playground playground_scale2_nerfw 2
+
+colmap-playground: download-playground
+	if [ ! -d ".playground/dense" ]; then sh +x bin/run_colmap.sh ./playground
+
+download-playground:
+	if [ ! -d "./playground" ]; then gsutil -m cp -r gs://lucas.netdron.es/playground .; fi
+
+
+eval-truck: download-test-ckpts
 	mv truck brandenburg_gate
 	python eval.py \
 	  --root_dir brandenburg_gate \
@@ -42,13 +62,10 @@ eval-truck:
 	  --N_vocab 1500 --encode_a --encode_t \
 	  --ckpt_path nerf_6_29/nerfw_truck/epoch=10.ckpt \
 	  --chunk 16384
+	mv brandenburg_gate truck
 
 train-truck: colmap-truck
-	python generate_splits.py truck/dense/images truck/truck.tsv truck truck/database.db
-	if [ ! -d "./truck/cache" ]; then \
-	  python prepare_phototourism.py --root_dir ./truck --img_downscale 2; \
-	fi
-	sh +x scripts/train_truck.sh
+	sh +x scripts/train_truck.sh ./truck truck_scale2_nerfw 2
 
 colmap-truck: download-truck
 	sh +x bin/run_colmap.sh ./truck
@@ -56,28 +73,8 @@ colmap-truck: download-truck
 download-truck:
 	if [ ! -d "./truck" ]; then gsutil -m cp -r gs://lucas.netdron.es/truck .; fi
 
-eval-playground:
-	mv playground brandenburg_gate
-	python eval.py \
-	  --root_dir brandenburg_gate \
-	  --dataset_name phototourism --scene_name playground_eval \
-	  --split test --N_samples 256 --N_importance 256 \
-	  --N_vocab 1500 --encode_a --encode_t \
-	  --ckpt_path nerf_6_29/nerfw_playground/epoch=10.ckpt \
-	  --chunk 16384
-
-train-playground:
-	python generate_splits.py playground/dense/images playground/playground.tsv playground playground/database.db
-	if [ ! -d "./playground/cache" ]; then \
-	  python prepare_phototourism.py --root_dir ./playground --img_downscale 2; \
-	fi
-	sh +x scripts/train_playground.sh
-
-colmap-playground: download-playground
-	sh +x bin/run_colmap.sh ./playground
-
-download-playground:
-	if [ ! -d "./playground" ]; then gsutil -m cp -r gs://lucas.netdron.es/data/playground .; fi
+download-test-ckpts:
+	if [ ! -d "./nerf_6_29" ]; then gsutil -m cp -r gs://lucas.netdron.es/nerf_6_29 .; fi
 
 eval-brandenburg: download-ckpts
 	python eval.py \
@@ -88,28 +85,15 @@ eval-brandenburg: download-ckpts
 	  --ckpt_path ckpts/brandenburg_scale8_nerfw/epoch=6.ckpt \
 	  --chunk 16384
 
-download-ckpts:
-	if [ ! -d ckpts/ ]; then gsutil -m cp -r gs://lucas.netdrones/nerfw_ckpts/ .; fi
-	mv nerfw_ckpts ckpts
-
 train-brandenburg: download-brandenburg
 	wget https://nerf-w.github.io/data/selected_images/brandenburg.tsv
 	mv brandenburg.tsv brandenburg_gate/
-	if [ ! -d "./brandenburg_gate/cache" ]; then \
-		python prepare_phototourism.py --root_dir ./brandenburg_gate --img_downscale 2; \
-	fi
-	sh +x scripts/train_brandenburg.sh
+	sh +x scripts/train.sh ./brandenburg_gate brandenburg_scale2_nerfw 2
 
 download-brandenburg:
 	if [ ! -d "./brandenburg_gate" ]; then gsutil -m cp -r gs://lucas.netdron.es/brandenburg_gate .; fi
 
-download-lego:
-	if [ ! -d "./nerf_synthetic" ]; then gsutil -m cp -r gs://lucas.netdron.es/nerf_synthetic .; fi
+download-ckpts:
+	if [ ! -d ckpts/ ]; then gsutil -m cp -r gs://lucas.netdrones/nerfw_ckpts/ .; fi
+	mv nerfw_ckpts ckpts
 
-train-lego: download-lego
-	sh +x scripts/train_blender.sh
-
-clean:
-	rm -rf brandenburg_gate
-	rm -rf nerf_synthetic
-	rm -rf logs

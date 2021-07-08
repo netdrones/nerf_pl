@@ -1,0 +1,18 @@
+#!/bin/bash
+
+WORKSPACE_DIR=$1
+EXP_NAME=$2
+DOWNSCALE=$3
+
+python generate_splits.py $WORKSPACE_DIR/dense/images $WORKSPACE_DIR/$WORKSPACE_DIR.tsv $WORKSPACE_DIR $WORKSPACE_DIR/database.db
+if [ ! -d "$WORKSPACE_DIR/cache" ]; then \
+  python prepare_phototourism.py --root_dir $WORKSPACE_DIR --img_downscale $DOWNSCALE; \
+fi
+
+python train.py \
+    --root_dir $WORKSPACE_DIR --dataset_name phototourism \
+    --img_downscale 2 --use_cache --N_importance 64 --N_samples 64 \
+    --encode_a --encode_t --beta_min 0.03 --N_vocab 1500 \
+    --num_epochs 20 --batch_size 1024 \
+    --optimizer adam --lr 5e-4 --lr_scheduler cosine \
+    --exp_name $EXP_NAME
