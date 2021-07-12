@@ -4,6 +4,8 @@ WORKSPACE_DIR=$1
 EXP_NAME=$2
 DOWNSCALE=$3
 
+if [ ! -d "$WORKSPACE_DIR/dense" ]; then sh +x bin/run_colmap.sh $WORKSPACE_DIR; fi
+
 python generate_splits.py $WORKSPACE_DIR/dense/images $WORKSPACE_DIR/$WORKSPACE_DIR.tsv $WORKSPACE_DIR $WORKSPACE_DIR/database.db
 if [ ! -d "$WORKSPACE_DIR/cache" ]; then \
   python prepare_phototourism.py --root_dir $WORKSPACE_DIR --img_downscale $DOWNSCALE; \
