@@ -23,7 +23,7 @@ def average_poses(poses):
     3. Compute axis y': the average y axis.
     4. Compute x' = y' cross product z, then normalize it as the x axis.
     5. Compute the y axis: z cross product x.
-    
+
     Note that at step 3, we cannot directly use y' as y axis since it's
     not necessarily orthogonal to z axis. We need to pass from x to y.
 
@@ -104,7 +104,7 @@ def create_spiral_poses(radii, focus_depth, n_poses=120):
         # the viewing z axis is the vector pointing from the @focus_depth plane
         # to @center
         z = normalize(center - np.array([0, 0, -focus_depth]))
-        
+
         # compute other axes as in @average_poses
         y_ = np.array([0, 1, 0]) # (3)
         x = normalize(np.cross(y_, z)) # (3)
@@ -189,7 +189,7 @@ class LLFFDataset(Dataset):
         H, W, self.focal = poses[0, :, -1] # original intrinsics, same for all images
         # assert H*self.img_wh[0] == W*self.img_wh[1], \
         #     f'You must set @img_wh to have the same aspect ratio as ({W}, {H}) !'
-        
+
         self.focal *= self.img_wh[0]/W
 
         # Step 2: correct poses
@@ -213,7 +213,7 @@ class LLFFDataset(Dataset):
         # ray directions for all pixels, same for all images (same H, W, focal)
         self.directions = \
             get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal) # (H, W, 3)
-            
+
         if self.split == 'train': # create buffer of all rays and rgb data
                                   # use first N_images-1 to train, the LAST is val
             self.all_rays = []
@@ -225,13 +225,13 @@ class LLFFDataset(Dataset):
 
                 img = Image.open(image_path).convert('RGB')
                 assert img.size[1]*self.img_wh[0] == img.size[0]*self.img_wh[1], \
-                    f'''{image_path} has different aspect ratio than img_wh, 
+                    f'''{image_path} has different aspect ratio than img_wh,
                         please check your data!'''
                 img = img.resize(self.img_wh, Image.LANCZOS)
                 img = self.transform(img) # (3, h, w)
                 img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
                 self.all_rgbs += [img]
-                
+
                 rays_o, rays_d = get_rays(self.directions, c2w) # both (h*w, 3)
                 if not self.spheric_poses:
                     near, far = 0, 1
@@ -244,14 +244,14 @@ class LLFFDataset(Dataset):
                     near = self.bounds.min()
                     far = min(8 * near, self.bounds.max()) # focus on central object only
 
-                self.all_rays += [torch.cat([rays_o, rays_d, 
+                self.all_rays += [torch.cat([rays_o, rays_d,
                                              near*torch.ones_like(rays_o[:, :1]),
                                              far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 8)
-                                 
+
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
-        
+
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
             self.c2w_val = self.poses[val_idx]
@@ -300,7 +300,7 @@ class LLFFDataset(Dataset):
                 near = self.bounds.min()
                 far = min(8 * near, self.bounds.max())
 
-            rays = torch.cat([rays_o, rays_d, 
+            rays = torch.cat([rays_o, rays_d,
                               near*torch.ones_like(rays_o[:, :1]),
                               far*torch.ones_like(rays_o[:, :1])],
                               1) # (h*w, 8)

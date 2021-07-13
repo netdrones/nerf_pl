@@ -1,9 +1,11 @@
 import os
 import torch
+import imageio
 import numpy as np
 from collections import defaultdict
 
 from PIL import Image
+from tqdm import tqdm
 from torchvision import transforms as T
 
 from models.nerf import *
@@ -12,7 +14,7 @@ from models.rendering import *
 from utils import load_ckpt, visualize_depth
 
 from datasets.ray_utils import *
-from datasets.colmap_utils import read_cameras_binary, read_images_binary, read_points3d_binary
+from datasets.colmap_utils import read_cameras_binary, read_images_binary, read_points3d_binary, qvec2rotmat
 
 # HYPERPARAMETERS
 #########################
@@ -22,56 +24,130 @@ N_tau = 16
 beta_min = 0.03
 N_emb_xyz = 10
 N_emb_dir = 4
-N_samples = 64
-N_importance = 64
-chunk = 1024*32
 NEAR = 0
 FAR = 5
 #########################
 
-def render_image_from_index(render, idx):
+def coord_from_pose(P):
+    bottom = np.array([0,0,0,1]).reshape(1,4)
+    P = np.concatenate([P, bottom], 0)
+    M = np.linalg.inv(P)[:3]
+    R = M[:, :3]
+    t = M[:, :4]
+    c = np.linalg.inv(R) @ t
 
-    def f(rays, ts, **kwargs):
-        B = rays.shape[0]
-        results = defaultdict(list)
-        for i in range(0, B, chunk):
-            kwargs_ = {}
-            if 'a_embedded' in kwargs:
-                kwargs_['a_embedded'] = kwargs['a_embedded'][i:i+chunk]
-                rendered_ray_chunks = render_rays(render.models,
-                                                  render.embeddings,
-                                                  rays[i:i+chunk],
-                                                  ts[i:i+chunk],
-                                                  N_samples,
-                                                  False,
-                                                  0,
-                                                  0,
-                                                  N_importance,
-                                                  chunk,
-                                                  False,
-                                                  test_time=True,
-                                                  **kwargs_)
+    return c
 
-                for k, v in rendered_ray_chunks.items():
-                    results[k] += [v]
-                for k, v in results.items():
-                    results[k] = torch.cat(v, 0)
-                return results
+def circ_rot(pose, radius, phi, theta):
+    coord = coord_from_pose(pose)
+
+    translation = np.array([
+        [1,0,0,0],
+        [0,1,0,-0.9*radius],
+        [0,0,1,radius],
+        [0,0,0,1],
+    ])
+
+    rot_phi = np.array([
+        [1,0,0,0],
+        [0,np.cos(phi),-np.sin(phi),0],
+        [0,np.sin(phi),np.cos(phi),0],
+        [0,0,0,1],
+    ])
+
+    rot_theta = np.array([
+        [np.cos(theta),0,-np.sin(theta),0],
+        [0,1,0,0],
+        [np.sin(theta),0,np.cos(theta),0],
+        [0,0,0,1],
+    ])
+
+    T = rot_theta @ rot_phi @ translation
+    result = coord @ T
+    return result[:3]
+
+def generate_spheric_poses(pose, radius, n_poses):
+    poses = []
+    for th in np.linspace(0,2*np.pi, n_poses+1)[:-1]:
+        pose = circ_rot(pose, radius, -np.pi/5, th)
+        poses += [pose]
+
+    return np.stack(poses, 0)
+
+def render_circle(render, idx, radius, n_frames):
+    sample = render[idx]
+    pose = sample['c2w']
+
+    # Define testing intrinsics
+    render.test_appearance_idx = idx
+    render.test_img_w, render.test_img_h = sample['img_wh']
+    render.test_focal = render.test_img_w/2/np.tan(np.pi/6)  # 60 FOV
+    render.test_K = np.array([[render.test_focal, 0, render.test_img_w/2],
+                             [0, render.test_focal, render.test_img_h/2],
+                             [0, 0, 1]])
+    render.poses_test = generate_spheric_poses(pose, radius, n_frames)
+    res_list = []
+
+    for i in tqdm(range(len(render))):
+        sample = render[i]
+        rays = sample['rays']
+        ts = sample['ts']
+        results = f(rays.cuda(), ts.cuda(), render)
+        res_list.append(results)
+
+    return res_list
+
+def png_from_idx(render, idx):
+    w, h = render[idx]['img_wh']
+    results = predict_image_from_idx(render, idx)
+    img_pred = np.clip(results['rgb_fine'].view(h,w,3).cpu().numpy(), 0, 1)
+    img_pred_ = (img_pred*255).astype(np.uint8)
+    imageio.imwrite(f'{idx:03d}.png', img_pred_)
+
+@torch.no_grad()
+def f(rays, ts, render, N_samples=64, N_importance=64, use_disp=False, chunk=1024*32, white_back=False, **kwargs):
+    B = rays.shape[0]
+    results = defaultdict(list)
+    for i in range(0, B, chunk):
+        rendered_ray_chunks = render_rays(render.models,
+                                          render.embeddings,
+                                          rays[i:i+chunk],
+                                          ts[i:i+chunk],
+                                          N_samples,
+                                          False,
+                                          0,
+                                          0,
+                                          N_importance,
+                                          chunk,
+                                          False,
+                                          test_time=True,
+                                          **kwargs)
+
+        for k, v in rendered_ray_chunks.items():
+            results[k] += [v.cpu()]
+    for k, v in results.items():
+        results[k] = torch.cat(v, 0)
+
+    return results
+
+def predict_image_from_idx(render, idx):
 
     sample = render[idx]
     rays = sample['rays'].cuda()
     ts = sample['ts'].cuda()
-    results = f(rays, ts)
+    results = f(rays, ts, render)
 
     return results
 
 class Render:
-    def __init__(self, ckpt_path, colmap_path=None, img_downscale=1):
+    def __init__(self, ckpt_path, colmap_path=None, split='test', img_downscale=1):
         """
         ckpt_path: Path to model checkpoints
         colmap_path: Path to computed COLMAP dense parameters
         img_downscale: Degree to which rendered images are downsampled (adjust if running into OOM errors)
         """
+        self.split = split
+        self.poses_test = {}
         self.ckpt_path = ckpt_path
         self.transform = T.ToTensor()
         self.colmap_path = colmap_path
@@ -112,24 +188,24 @@ class Render:
         self.models = {'coarse': nerf_coarse, 'fine': nerf_fine}
 
     def load_poses(self):
-        imdata = read_images_binary(os.path.join(self.colmap_path, 'dense/sparse/images.bin'))
+        self.imdata = read_images_binary(os.path.join(self.colmap_path, 'dense/sparse/images.bin'))
 
-        # Store mapping of image paths to COLMAP image ID
+        # Store two-way mapping of image paths to COLMAP image ID
         self.img_path_to_id = {}
-        for v in imdata.values():
+        for v in self.imdata.values():
             self.img_path_to_id[v.name] = v.id
         self.img_ids = []
         self.image_paths = {}
-        for filename in os.listdir(os.path.join(self.colmap_path, 'dense/images')):
+        for filename in self.img_path_to_id.keys():
             id_ = self.img_path_to_id[filename]
             self.image_paths[id_] = filename
             self.img_ids += [id_]
 
         # Load poses
         w2c_mats = []
-        bottom = np.array([0,0,0,1.]).reshape(1,4)
+        bottom = np.array([0,0,0,1]).reshape(1,4)
         for id_ in self.img_ids:
-            img = imdata[id_]
+            img = self.imdata[id_]
             R = img.qvec2rotmat()
             t = img.tvec.reshape(3,1)
             w2c_mats += [np.concatenate([np.concatenate([R, t], 1), bottom], 0)]
@@ -161,12 +237,12 @@ class Render:
 
     def load_cameras(self):
         self.Ks = {}
-        camdata = read_cameras_binary(os.path.join(self.colmap_path, 'dense/sparse/cameras.bin'))
+        self.camdata = read_cameras_binary(os.path.join(self.colmap_path, 'dense/sparse/cameras.bin'))
 
         # Construct camera intrinsic matrices (K)
-        for key in camdata:
+        for key in self.camdata:
             K = np.zeros((3,3), dtype=np.float32)
-            cam = camdata[key]
+            cam = self.camdata[key]
             W, H = int(cam.params[2]*2), int(cam.params[3]*2)
             W_scaled, H_scaled = W // self.img_downscale, H // self.img_downscale
 
@@ -178,34 +254,83 @@ class Render:
 
             self.Ks[key] = K
 
+    def __len__(self):
+        if len(self.poses_test) > 0:
+            return len(self.poses_test)
+        else:
+            return len(self.poses_dict)
+
     def __getitem__(self, idx):
         sample = {}
-        id_ = self.img_ids[idx]
-        sample['c2w'] = c2w = torch.FloatTensor(self.poses_dict[id_])
-        img = Image.open(os.path.join(self.colmap_path, 'dense/images',
-                                      self.image_paths[id_])).convert('RGB')
 
-        # Downscale the image
-        img_w, img_h = img.size
-        img_w = img_w // self.img_downscale
-        img_h = img_h // self.img_downscale
-        img = img.resize((img_w, img_h), Image.LANCZOS)
+        if self.split == 'val':
+            sample['c2w'] = c2w = torch.FloatTensor(self.poses_dict[idx])
+            img = Image.open(os.path.join(self.colmap_path, 'dense/images',
+                                          self.image_paths[idx])).convert('RGB')
 
-        # Store RGB values
-        img = self.transform(img)  # (3, h, w)
-        img = img.view(3, -1).permute(1, 0)  # (h*w, 3)
-        sample['rgbs'] = img
+            # Downscale the image
+            img_w, img_h = img.size
+            img_w = img_w // self.img_downscale
+            img_h = img_h // self.img_downscale
+            img = img.resize((img_w, img_h), Image.LANCZOS)
 
-        # Compute rays
-        directions = get_ray_directions(img_h, img_w, self.Ks[id_])
-        rays_o, rays_d = get_rays(directions, c2w)
-        near, far = NEAR, FAR
-        rays = torch.cat([rays_o, rays_d,
-                          near*torch.ones_like(rays_o[:, :1]),
-                          far*torch.ones_like(rays_o[:, :1])],
-                          1)  # (h*w, 8)
-        sample['rays'] = rays
-        sample['ts'] = id_ * torch.ones(len(rays), dtype=torch.long)
-        sample['img_wh'] = torch.LongTensor([img_w, img_h])
+            # Store RGB values
+            img = self.transform(img)  # (3, h, w)
+            img = img.view(3, -1).permute(1, 0)  # (h*w, 3)
+            sample['rgbs'] = img
+
+            # Compute rays
+            directions = get_ray_directions(img_h, img_w, self.Ks[idx])
+            rays_o, rays_d = get_rays(directions, c2w)
+            near, far = NEAR, FAR
+            rays = torch.cat([rays_o, rays_d,
+                              near*torch.ones_like(rays_o[:, :1]),
+                              far*torch.ones_like(rays_o[:, :1])],
+                              1)  # (h*w, 8)
+            sample['rays'] = rays
+            sample['ts'] = idx * torch.ones(len(rays), dtype=torch.long)
+            sample['img_wh'] = torch.LongTensor([img_w, img_h])
+
+        elif self.split == 'test':
+            if len(self.poses_test) > 0 :
+                sample['c2w'] = c2w = torch.FloatTensor(self.poses_test[idx])
+                directions = get_ray_directions(self.test_img_h, self.test_img_w, self.test_K)
+                rays_o, rays_d = get_rays(directions, c2w)
+                near, far = NEAR, FAR
+                rays = torch.cat([rays_o, rays_d,
+                                  near*torch.ones_like(rays_o[:, :1]),
+                                  far*torch.ones_like(rays_o[:, :1])],
+                                  1)
+                sample['rays'] = rays
+                sample['ts'] = self.test_appearance_idx * torch.ones(len(rays), dtype=torch.long)
+                sample['img_wh'] = torch.LongTensor([self.test_img_w, self.test_img_h])
+
+            else:
+                sample['c2w'] = c2w = torch.FloatTensor(self.poses_dict[idx])
+                img = Image.open(os.path.join(self.colmap_path, 'dense/images',
+                                              self.image_paths[idx])).convert('RGB')
+
+                # Downscale the image
+                img_w, img_h = img.size
+                img_w = img_w // self.img_downscale
+                img_h = img_h // self.img_downscale
+                img = img.resize((img_w, img_h), Image.LANCZOS)
+
+                # Store RGB values
+                img = self.transform(img)  # (3, h, w)
+                img = img.view(3, -1).permute(1, 0)  # (h*w, 3)
+                sample['rgbs'] = img
+
+                # Compute rays
+                directions = get_ray_directions(img_h, img_w, self.Ks[self.imdata[idx].camera_id])
+                rays_o, rays_d = get_rays(directions, c2w)
+                near, far = NEAR, FAR
+                rays = torch.cat([rays_o, rays_d,
+                                  near*torch.ones_like(rays_o[:, :1]),
+                                  far*torch.ones_like(rays_o[:, :1])],
+                                  1)  # (h*w, 8)
+                sample['rays'] = rays
+                sample['ts'] = idx * torch.ones(len(rays), dtype=torch.long)
+                sample['img_wh'] = torch.LongTensor([img_w, img_h])
 
         return sample
