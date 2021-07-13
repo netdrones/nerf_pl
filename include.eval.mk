@@ -41,7 +41,7 @@ eval-brandenburg: download-ckpts
 	  --chunk 16384
 
 download-ckpts:
-	if [ ! -d ckpts/ ]; then gsutil -m cp -r gs://lucas.netdrones/nerfw_ckpts/ .; fi
+	if [ ! -d ckpts/ ]; then gsutil -m cp -r gs://lucas.netdron.es/nerfw_ckpts/ .; fi
 	mv nerfw_ckpts ckpts
 
 download-house-ckpts:
