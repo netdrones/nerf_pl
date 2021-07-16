@@ -67,7 +67,7 @@ def circ_rot(pose, radius, phi, theta):
     return result[:3]
 
 def generate_spheric_poses(pose, radius, n_poses):
-    poses = []
+    poses = [pose]
     for th in np.linspace(0,2*np.pi, n_poses+1)[:-1]:
         pose = circ_rot(pose, radius, -np.pi/5, th)
         poses += [pose]
@@ -86,16 +86,44 @@ def render_circle(render, idx, radius, n_frames):
                              [0, render.test_focal, render.test_img_h/2],
                              [0, 0, 1]])
     render.poses_test = generate_spheric_poses(pose, radius, n_frames)
-    res_list = []
 
     for i in tqdm(range(len(render))):
         sample = render[i]
         rays = sample['rays']
         ts = sample['ts']
         results = f(rays.cuda(), ts.cuda(), render)
-        res_list.append(results)
+        img_pred = np.clip(results['rgb_fine'].view(render.test_img_h, render.test_img_w, 3).cpu().numpy(), 0, 1)
+        img_pred_ = (img_pred*255).astype(np.uint8)
+        imageio.imwrite(f'results/{i:03d}.png', img_pred_)
 
-    return res_list
+def render_line(render, idx, n_frames):
+
+    # Define testing intrinsics
+    render.test_appearance_idx = idx
+    render.test_img_w, render.test_img_h = render[idx]['img_wh']
+    render.test_focal = render.test_img_w/2/np.tan(np.pi/6)  # 60 FOV
+    render.test_K = np.array([[render.test_focal, 0, render.test_img_w/2],
+                             [0, render.test_focal, render.test_img_h/2],
+                             [0, 0, 1]])
+
+    render.poses_test = np.tile(render.poses_dict[idx], (n_frames, 1, 1))
+    dx = np.linspace(0, 0.03, n_frames)
+    dy = np.linspace(0, -0.5, n_frames)
+    dz = np.linspace(00, 0.0, n_frames)
+
+    for i in range(n_frames):
+        render.poses_test[i, 0, 3] += dx[i]
+        render.poses_test[i, 1, 3] += dy[i]
+        render.poses_test[i, 2, 3] += dz[i]
+
+    for i in tqdm(range(len(render))):
+        sample = render[i]
+        rays = sample['rays']
+        ts = sample['ts']
+        results = f(rays.cuda(), ts.cuda(), render)
+        img_pred = np.clip(results['rgb_fine'].view(render.test_img_h, render.test_img_w, 3).cpu().numpy(), 0, 1)
+        img_pred_ = (img_pred*255).astype(np.uint8)
+        imageio.imwrite(f'results/{i:03d}.png', img_pred_)
 
 def png_from_idx(render, idx):
     w, h = render[idx]['img_wh']
