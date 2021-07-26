@@ -56,7 +56,7 @@ First, create a GCP instance with a high amount of CPUs and RAM, but no GPU. The
 To run the Python script on its own, use the following command:
 
 ```bash
-python image_utils.py <input-dir> <output-dir>
+python image_utils.py <input-dir> <output-dir> <overlap-threshold (optional - default = 0.98)>
 ```
 
 This will filter images in `<input-dir>`, and place the cleaned results into `output-dir`. Then, upload the cleaned images to GCP, and on a machine with a GPU, run the training script again, but this time, don't use the `-c` flag!
