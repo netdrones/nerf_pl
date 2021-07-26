@@ -10,6 +10,9 @@ The code is largely based on NeRF implementation (see master or dev branch), the
 
 * OS: Ubuntu 18.04
 * NVIDIA GPU with **CUDA>=10.2** (tested with 1 RTX2080Ti, 2 Tesla P4, 2 Tesla T4, 2 Tesla V100)
+* We recommend using 2 NVIDIA Tesla V100 GPUs for a typical job.
+
+To install CUDA, use `sh +x bin/install_cuda110.sh`
 
 ### Software
 
