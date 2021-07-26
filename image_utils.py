@@ -75,11 +75,12 @@ def calculate_homography(img_1, img_2):
 
 class ImageDataset:
 
-    def __init__(self, dataset_path, overlap_high=0.98, min_matches=MIN_MATCHES):
+    def __init__(self, dataset_path, name, overlap_high=0.98, min_matches=MIN_MATCHES):
 
         self.blur_threshold = BLUR_THRESHOLD
         self.dataset_path = dataset_path
         self.overlap_high=overlap_high
+        self.name = name
         self.load_dataset()
         self.compute_overlap_runs()
         self.image_list = [i for j in self.overlap_runs for i in j]
@@ -148,7 +149,7 @@ class ImageDataset:
     def save_dataset(self, output_dir):
         os.makedirs(output_dir, exist_ok=True)
         for i, p in enumerate(self.image_list):
-            shutil.copyfile(p.img_path, f'{output_dir}/{i:03d}.jpg')
+            shutil.copyfile(p.img_path, f'{output_dir}/{self.name}_{i:03d}.jpg')
 
 # TODO: Add iPhone image support
 class PixImage:
@@ -200,8 +201,22 @@ class PixImage:
 
 if __name__ == '__main__':
 
-    img_path = sys.argv[1]
+    nested_images = True
+    workspace_dir = sys.argv[1]
     output_path = sys.argv[2]
-    overlap_high = sys.argv[3]
-    dataset = ImageDataset(img_path, overlap_high=overlap_high)
-    dataset.save_dataset(output_path)
+    try:
+        overlap_high = sys.argv[3]
+    except IndexError:
+        overlap_high = 0.98
+
+    cameras = os.listdir(workspace_dir)
+    for i, cam in enumerate(cameras):
+        if not os.path.isdir(os.path.join(workspace_dir, cameras[i])):
+            nested_images = False
+            break
+        dataset = ImageDataset(os.path.join(workspace_dir, cameras[i]), f'cam{i+1}', overlap_high=overlap_high)
+        dataset.save_dataset(output_path)
+
+    if not nested_images:
+        dataset = ImageDataset(workspace_dir, 'cam1', overlap_high=overlap_high)
+        dataset.save_dataset(output_path)
