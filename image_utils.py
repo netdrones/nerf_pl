@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import cv2 as cv
 import numpy as np
 import skgeom as sg
@@ -145,6 +146,7 @@ class ImageDataset:
                 self.overlap_runs.append(tmp_list)
 
     def save_dataset(self, output_dir):
+        os.makedirs(output_dir, exist_ok=True)
         for i, p in enumerate(self.image_list):
             shutil.copyfile(p.img_path, f'{output_dir}/{i:03d}.jpg')
 
