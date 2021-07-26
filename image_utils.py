@@ -13,7 +13,6 @@ from exif import Image as Exif
 MIN_MATCHES = 200
 FLANN_INDEX_KDTREE = 1
 OVERLAP_LOW = 0.5
-OVERLAP_HIGH = 0.98
 
 # Light parameters
 GAMMA = 1.5
@@ -76,10 +75,11 @@ def calculate_homography(img_1, img_2):
 
 class ImageDataset:
 
-    def __init__(self, dataset_path, min_matches=MIN_MATCHES):
+    def __init__(self, dataset_path, overlap_high=0.98, min_matches=MIN_MATCHES):
 
         self.blur_threshold = BLUR_THRESHOLD
         self.dataset_path = dataset_path
+        self.overlap_high=overlap_high
         self.load_dataset()
         self.compute_overlap_runs()
         self.image_list = [i for j in self.overlap_runs for i in j]
@@ -129,7 +129,7 @@ class ImageDataset:
                 else:
                     continue
 
-            if overlap >= OVERLAP_LOW and overlap <= OVERLAP_HIGH:
+            if overlap >= OVERLAP_LOW and overlap <= self.overlap_high:
                 in_run = True
                 tmp_list.append(self.__image_list[i-1])
             else:
@@ -202,5 +202,6 @@ if __name__ == '__main__':
 
     img_path = sys.argv[1]
     output_path = sys.argv[2]
-    dataset = ImageDataset(img_path)
+    overlap_high = sys.argv[3]
+    dataset = ImageDataset(img_path, overlap_high=overlap_high)
     dataset.save_dataset(output_path)

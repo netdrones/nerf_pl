@@ -2,20 +2,24 @@
 
 SCRIPTNAME="$(basename $0)"
 CLEAN=false
+OVERLAP_HIGH="$OPTARG"
 
 OPTIND=1
 while getopts "hci:" opt; do
   	case "$opt" in
 	h)
-	  	echo "$SCRIPTNAME: flags: -h help, -c clean, -i input_dir"
+	  	echo "$SCRIPTNAME: flags: -h help, -c clean, -i input_dir, -o overlap_threshold"
 		exit 0
 		;;
 	c)
 	  	CLEAN=true
 		;;
 	i)
-	  	export WORKSPACE_DIR="$OPTARG"
+	  	WORKSPACE_DIR="$OPTARG"
 		;;
+	o)
+	  	OVERLAP_HIGH="$OPTARG"
+
 	esac
 done
 
@@ -42,7 +46,7 @@ then
      		mv $WORKSPACE_DIR/*.PNG $WORKSPACE_DIR/images 2> /dev/null
 		if $CLEAN
 		then
-		  	python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned
+		  	python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned $OVERLAP_HIGH
 			rm -r $WORKSPACE_DIR/images
 			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
 		fi
