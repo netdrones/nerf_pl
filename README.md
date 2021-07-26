@@ -33,4 +33,12 @@ bash Miniconda3-latest-Linux-x86_64.sh
 
 ### New Datasets
 
-* For images in `<my-dataset>`, run `sh +x bin/train.sh </path/to/my-dataset>`
+For images in `<my-dataset>`, run the following command:
+
+```bash
+sh +x bin/train.sh </path/to/my-dataset>
+```
+
+In the case that the images in `<my-dataset>` were taken with the PixPole Android camera setup,
+these will be automatically filtered. Currently other camera software architectures are not supported (but likely
+iPhone will be added soon!).

@@ -149,6 +149,7 @@ class ImageDataset:
         for i, p in enumerate(self.image_list):
             shutil.copyfile(p.img_path, f'{output_dir}/{i:03d}.jpg')
 
+# TODO: Add iPhone image support
 class PixImage:
 
     def __init__(self, img_path, gamma=GAMMA, blur_threshold=BLUR_THRESHOLD):
@@ -199,4 +200,6 @@ class PixImage:
 if __name__ == '__main__':
 
     img_path = sys.argv[1]
-    images = os.listdir(img_path)
+    output_path = sys.argv[2]
+    dataset = ImageDataset(img_path)
+    dataset.save_dataset(output_path)
