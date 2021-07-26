@@ -42,6 +42,8 @@ For images in `<my-dataset>`, run the following command:
 sh +x bin/train.sh -i </path/to/my-dataset> -c
 ```
 
+Note that if you're not using an Android Pixel phone to take the images, the `-c` flag is currently not supported.
+
 #### :warning: IMPORTANT: Automatic Dataset Cleaning
 
 In the case that the images in `<my-dataset>` were taken with the PixPole Android camera setup,
