@@ -130,7 +130,7 @@ class ImageDataset:
                 else:
                     continue
 
-            if overlap >= OVERLAP_LOW and overlap <= self.overlap_high:
+            if overlap >= OVERLAP_LOW and overlap <= float(self.overlap_high):
                 in_run = True
                 tmp_list.append(self.__image_list[i-1])
             else:
