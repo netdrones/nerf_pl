@@ -1,9 +1,32 @@
 #!/bin/bash
 
-WORKSPACE_DIR=$1
+SCRIPTNAME="$(basename $0)"
+CLEAN=false
+
+OPTIND=1
+while getopts "hci:" opt; do
+  	case "$opt" in
+	h)
+	  	echo "$SCRIPTNAME: flags: -h help, -c clean, -i input_dir"
+		exit 0
+		;;
+	c)
+	  	CLEAN=true
+		;;
+	i)
+	  	export WORKSPACE_DIR="$OPTARG"
+		;;
+	esac
+done
+
+shift "$(( OPTIND -1 ))"
+if [ -z "$WORKSPACE_DIR" ]; then
+  	echo "$SCRIPTNAME: Missing -i argument"
+	exit 1
+fi
+
 EXP_NAME=$WORKSPACE_DIR
 DOWNSCALE=2
-
 NUM_GPUS="$(nvidia-smi --query_gpu=name --format=csv,nohearder | wc -l)"
 
 if [ ! -d "$WORKSPACE_DIR/dense" ]
@@ -17,11 +40,14 @@ then
 		mv $WORKSPACE_DIR/*.JPG $WORKSPACE_DIR/images 2> /dev/null
      		mv $WORKSPACE_DIR/*.JPEG $WORKSPACE_DIR/images 2> /dev/null
      		mv $WORKSPACE_DIR/*.PNG $WORKSPACE_DIR/images 2> /dev/null
-		python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned
-		mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
+		if $CLEAN
+		then
+		  	python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned
+			rm -r $WORKSPACE_DIR/images
+			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
+		fi
    	fi
    	sh +x bin/run_colmap.sh $WORKSPACE_DIR
-	rm -r $WORKSPACE_DIR/images
 fi
 
 python generate_splits.py $WORKSPACE_DIR/dense/images $WORKSPACE_DIR/$WORKSPACE_DIR.tsv $WORKSPACE_DIR $WORKSPACE_DIR/database.db

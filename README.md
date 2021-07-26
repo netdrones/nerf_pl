@@ -39,9 +39,24 @@ bash Miniconda3-latest-Linux-x86_64.sh
 For images in `<my-dataset>`, run the following command:
 
 ```bash
-sh +x bin/train.sh </path/to/my-dataset>
+sh +x bin/train.sh -i </path/to/my-dataset> -c
 ```
+
+#### :warning: IMPORTANT: Automatic Dataset Cleaning
 
 In the case that the images in `<my-dataset>` were taken with the PixPole Android camera setup,
 these will be automatically filtered. Currently other camera software architectures are not supported (but likely
 iPhone will be added soon!).
+
+For smaller datasets, this can be automatically handled by the training script. But for larger datasets, this might become
+computationally far too inefficient. In this case, we recommend separating the data cleaning into its own separate process and caching to GCP in the following manner.
+
+First, create a GCP instance with a high amount of CPUs and RAM, but no GPU. The dataset cleaning doesn't run on the GPU but can take a long time, so we don't want to get billed for the GPUs while we're not using them for hours on end.
+
+To run the Python script on its own, use the following command:
+
+```bash
+python image_utils.py <input-dir> <output-dir>
+```
+
+This will filter images in `<input-dir>`, and place the cleaned results into `output-dir`. Then, upload the cleaned images to GCP, and on a machine with a GPU, run the training script again, but this time, don't use the `-c` flag!
