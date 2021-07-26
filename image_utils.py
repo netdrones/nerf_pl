@@ -11,7 +11,8 @@ from exif import Image as Exif
 # SIFT parameters
 MIN_MATCHES = 200
 FLANN_INDEX_KDTREE = 1
-OVERLAP_THRESHOLD = 0.5
+OVERLAP_LOW = 0.5
+OVERLAP_HIGH = 0.98
 
 # Light parameters
 GAMMA = 1.5
@@ -127,10 +128,8 @@ class ImageDataset:
                 else:
                     continue
 
-            if overlap >= OVERLAP_THRESHOLD:
+            if overlap >= OVERLAP_LOW and overlap <= OVERLAP_HIGH:
                 in_run = True
-                if overlap >= 1:
-                    continue
                 tmp_list.append(self.__image_list[i-1])
             else:
                 if in_run:
