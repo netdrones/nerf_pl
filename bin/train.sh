@@ -43,6 +43,7 @@ then
 			python image_utils.py $WORKSPACE_DIR $WORKSPACE_DIR/images_cleaned $OVERLAP_HIGH
 			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
 		else
+		  	mkdir -p $WORKSPACE_DIR/images
 			mv $WORKSPACE_DIR/*.jpg $WORKSPACE_DIR/images 2> /dev/null
 			mv $WORKSPACE_DIR/*.jpeg $WORKSPACE_DIR/images 2> /dev/null
 			mv $WORKSPACE_DIR/*.png $WORKSPACE_DIR/images 2> /dev/null
@@ -58,6 +59,15 @@ then
 		  	python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned $OVERLAP_HIGH
 			rm -r $WORKSPACE_DIR/images
 			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
+		else
+		  	mkdir -p $WORKSPACE_DIR/images
+		  	mv $WORKSPACE_DIR/*.jpg $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.jpeg $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.png $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.JPG $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.JPEG $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.PNG $WORKSPACE_DIR/images 2> /dev/null
+
 		fi
    	fi
    	sh +x bin/run_colmap.sh $WORKSPACE_DIR
