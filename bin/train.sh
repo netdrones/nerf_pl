@@ -2,7 +2,7 @@
 
 SCRIPTNAME="$(basename $0)"
 CLEAN=false
-OVERLAP_HIGH="$OPTARG"
+OVERLAP_HIGH=0.98
 
 OPTIND=1
 while getopts "hci:" opt; do
@@ -12,13 +12,13 @@ while getopts "hci:" opt; do
 		exit 0
 		;;
 	c)
-	  	CLEAN=true
+	  	export CLEAN=true
 		;;
 	i)
-	  	WORKSPACE_DIR="$OPTARG"
+	  	export WORKSPACE_DIR="$OPTARG"
 		;;
 	o)
-	  	OVERLAP_HIGH="$OPTARG"
+	  	export OVERLAP_HIGH="$OPTARG"
 
 	esac
 done
@@ -37,15 +37,24 @@ if [ ! -d "$WORKSPACE_DIR/dense" ]
 then
 	if [ ! -d $WORKSPACE_DIR/images ]
    	then
-     		mkdir -p $WORKSPACE_DIR/images
-     		mv $WORKSPACE_DIR/*.jpg $WORKSPACE_DIR/images 2> /dev/null
-		mv $WORKSPACE_DIR/*.jpeg $WORKSPACE_DIR/images 2> /dev/null
-		mv $WORKSPACE_DIR/*.png $WORKSPACE_DIR/images 2> /dev/null
-		mv $WORKSPACE_DIR/*.JPG $WORKSPACE_DIR/images 2> /dev/null
-     		mv $WORKSPACE_DIR/*.JPEG $WORKSPACE_DIR/images 2> /dev/null
-     		mv $WORKSPACE_DIR/*.PNG $WORKSPACE_DIR/images 2> /dev/null
 		if $CLEAN
 		then
+		  	mkdir -p $WORKSPACE_DIR/images_cleaned
+			python image_utils.py $WORKSPACE_DIR $WORKSPACE_DIR/images_cleaned $OVERLAP_HIGH
+			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
+		else
+			mv $WORKSPACE_DIR/*.jpg $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.jpeg $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.png $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.JPG $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.JPEG $WORKSPACE_DIR/images 2> /dev/null
+			mv $WORKSPACE_DIR/*.PNG $WORKSPACE_DIR/images 2> /dev/null
+
+		fi
+	else
+	  	if $CLEAN
+		then
+		  	mkdir -p $WORKSPACE_DIR/images_cleaned
 		  	python image_utils.py $WORKSPACE_DIR/images $WORKSPACE_DIR/images_cleaned $OVERLAP_HIGH
 			rm -r $WORKSPACE_DIR/images
 			mv $WORKSPACE_DIR/images_cleaned $WORKSPACE_DIR/images
@@ -54,7 +63,11 @@ then
    	sh +x bin/run_colmap.sh $WORKSPACE_DIR
 fi
 
-python generate_splits.py $WORKSPACE_DIR/dense/images $WORKSPACE_DIR/$WORKSPACE_DIR.tsv $WORKSPACE_DIR $WORKSPACE_DIR/database.db
+python generate_splits.py \
+  	$WORKSPACE_DIR/dense/images \
+	$WORKSPACE_DIR/$WORKSPACE_DIR.tsv \
+	$WORKSPACE_DIR $WORKSPACE_DIR/database.db
+
 if [ ! -d "$WORKSPACE_DIR/cache" ]; then \
 	python prepare_phototourism.py --root_dir $WORKSPACE_DIR --img_downscale $DOWNSCALE; \
 fi
