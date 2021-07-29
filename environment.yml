@@ -16,7 +16,6 @@ dependencies:
     - einops==0.3.0
     - test-tube==0.7.5
     - kornia==0.4.1
-    - opencv-python==4.5.1.48
     - matplotlib==3.3.3
     - jupyter
     - imageio==2.9.0
