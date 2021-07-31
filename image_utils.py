@@ -39,7 +39,7 @@ def calculate_overlap(img_1, img_2):
 
 def calculate_homography(img_1, img_2):
 
-    sift = cv.SIFT_create()
+    sift = cv.xfeatures2d.SURF_create()
 
     # Extract features from each image
     kp_1, des_1 = sift.detectAndCompute(img_1, None)

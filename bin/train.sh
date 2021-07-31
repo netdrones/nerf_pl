@@ -29,6 +29,11 @@ if [ -z "$WORKSPACE_DIR" ]; then
 	exit 1
 fi
 
+# Ensure that GPU-accelerated OpenCV is installed
+pip install --upgrade pip
+if [ ! -d bin/opencv ]; then gsutil -m cp -r gs://netdron.es/opencv bin; fi
+pip install bin/opencv/*.whl
+
 EXP_NAME=$WORKSPACE_DIR
 DOWNSCALE=2
 NUM_GPUS="$(nvidia-smi --query_gpu=name --format=csv,nohearder | wc -l)"
