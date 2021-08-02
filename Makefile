@@ -5,7 +5,9 @@ include include.eval.mk
 
 install:
 	conda env update -f environment.yml
-	if [ ! -d ~/ws/git/opencv-python ]; then sh +x bin/install_opencv.sh; fi
+	gsutil -m cp -r gs://netdron.es/opencv/*
+	pip install *.whl
+	rm *.whl
 
 build-opencv:
 	sh +x bin/install_opencv.sh
