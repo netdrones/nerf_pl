@@ -51,3 +51,5 @@ Successive images that exceed this percentage of overlap will be thrown out. The
 
 Note that if you're not using an Android Pixel phone to take the images, the `-c` flag is currently not supported. However, iPhone
 support will shortly be available.
+
+Also note that OpenCV uses CUDA for GPU acceleration, and we're using a custom-built version of the package to enable this. On architectures besides Ubuntu 18.04 with a Tesla V100 GPU, this is not tested. If the `pip` installation isn't working, you'll need to build OpenCV from source;  use `make build-opencv`.
