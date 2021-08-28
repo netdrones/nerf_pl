@@ -36,7 +36,8 @@ Uninstall prior ADB programs from the phone
 adb uninstall es.netdron.headlesscamera
 ```
 And install the `.apk` file you just downloaded
-```adb install headless-camera-2021-04-23-14-40.apk
+```
+adb install headless-camera-2021-04-23-14-40.apk
 ```
 Grant the `Headless Camera` application (what takes the photos) permission
 
@@ -102,7 +103,7 @@ create a virtual machine with the computing power to process your images.
 Choose the name
 
 ``` bash
-export INSTANCE_NAME="<name_of_choice>
+export INSTANCE_NAME="<name_of_choice>"
 ```
 
 Create the instance
@@ -113,7 +114,7 @@ gcloud beta compute instances create $INSTANCE_NAME \
 	  --zone us-central1-a \
 	  --custom-cpu 12 \
 	  --custom-memory 64 \
-	  --accelerator type=nvidia-tesla-v100,count=4 \
+	  --accelerator type=nvidia-tesla-v100,count=2 \
 	  --maintenance-policy TERMINATE --restart-on-failure \
 	  --source-machine-image nerf-machine-image
 ```
@@ -121,8 +122,10 @@ This will take some time.
 
 Then log into the newly created instance
 ```bash
-gcloud compute ssh sidney-gcp --project netdrones --zone us-central1-a
+gcloud compute ssh $INSTANCE_NAME --project netdrones --zone us-central1-a
 ```
+
+
 A common issue here is `ERROR: (gcloud.compute.ssh) [/usr/bin/ssh] exited with return code [255].` Simply run the above command again until you are presented with `welcome to Ubuntu...` (may have to run 6+ times)
 
 ## [**Processing Images**](https://github.com/netdrones/nerf_pl/tree/nerfw)
@@ -240,3 +243,5 @@ However, you are now able to run
 png_from_idx(render, <idx_of_image>)
 ```
 This will produce a .JPG file in the nerf_pl folder that shows where `render_circle` will start from. Execute this command for as many of the idx's as you would like, and you can view them to decide which one you want to start from. You will find these images at `ws > git > netdrones-nerf > nerf_pl` in the remote desktop computer.
+### Too many virtual machines in a given region
+There is only so much computing power in each region. If you are getting an error related to this, try switching the area (from `east1-a` to `west1-a`). You will also need to change the following command to log into the VM (replacing the same things).
